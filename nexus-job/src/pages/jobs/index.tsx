@@ -1,5 +1,5 @@
-import { supabase } from "../../lib/supabaseClient"
-
+import { supabase } from '@/lib/supabaseClient'
+import Image from 'next/image'
 
 export default function JobsPage({ jobs }: any) {
   return (
@@ -9,9 +9,11 @@ export default function JobsPage({ jobs }: any) {
           key={job.id}
           className="rounded-xl border p-5 shadow-sm transition hover:shadow-md"
         >
-          <img
+          <Image
             src={job.image_url}
             alt={job.company}
+            width={500}
+            height={500}
             className="mb-3 h-16 w-16 object-contain"
           />
 
