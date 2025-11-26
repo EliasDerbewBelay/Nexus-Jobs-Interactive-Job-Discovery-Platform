@@ -191,14 +191,4 @@ MIT — free to use, modify, and distribute.
 
 ---
 
-# ✅ This README is ready to commit 🚀
 
-Once your repo is initialized, add it:
-
-```bash
-git add README.md
-git commit -m "docs: add professional project README"
-git push origin main
-```
-
----
