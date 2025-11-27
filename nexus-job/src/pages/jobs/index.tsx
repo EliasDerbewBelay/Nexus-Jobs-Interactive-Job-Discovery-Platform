@@ -1,33 +1,29 @@
 import { supabase } from '@/lib/supabaseClient'
-import Image from 'next/image'
+import { JobsGrid } from '@/components/common/JobsGrid'
+import { EmptyState } from '@/components/common/EmptyState'
+import { Job } from '../../types/job'
 
-export default function JobsPage({ jobs }: any) {
+interface JobsPageProps {
+  jobs: Job[]
+}
+
+export default function JobsPage({ jobs }: JobsPageProps) {
   return (
-    <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-2 xl:grid-cols-3">
-      {jobs.map((job: any) => (
-        <div
-          key={job.id}
-          className="rounded-xl border p-5 shadow-sm transition hover:shadow-md"
-        >
-          <Image
-            src={job.image_url}
-            alt={job.company}
-            width={500}
-            height={500}
-            className="mb-3 h-16 w-16 object-contain"
-          />
-
-          <h2 className="text-xl font-semibold">{job.title}</h2>
-          <p className="text-gray-600">{job.company}</p>
-          <p className="text-sm text-gray-500">{job.location}</p>
-
-          <span className="mt-3 inline-block rounded-full bg-blue-100 px-3 py-1 text-sm text-blue-700">
-            {job.type}
-          </span>
-
-          <p className="mt-3 font-medium">{job.salary}</p>
+    <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        {/* Header */}
+        <div className="mb-12 text-center">
+          <h1 className="text-foreground mb-4 text-4xl font-bold">
+            Find Your Dream Job
+          </h1>
+          <p className="text-muted-foreground mx-auto max-w-2xl text-xl">
+            Discover opportunities that match your skills and ambitions
+          </p>
         </div>
-      ))}
+
+        {/* Jobs Grid or Empty State */}
+        {jobs.length > 0 ? <JobsGrid jobs={jobs} /> : <EmptyState />}
+      </div>
     </div>
   )
 }
@@ -36,7 +32,7 @@ export async function getServerSideProps() {
   const { data: jobs, error } = await supabase
     .from('jobs')
     .select('*')
-    .order('id', { ascending: true })
+    .order('created_at', { ascending: false })
 
   return {
     props: {
