@@ -14,6 +14,11 @@ export interface Job {
   experience_level?: string
   remote_policy?: 'remote' | 'hybrid' | 'onsite'
   category?: string
+  company_name?: string | null
+  employment_type?: string | null
+  salary_range?: string | null
+  logo_url?: string | null
+  applicants_count?: number | null
 }
 
 export interface JobCardProps {
