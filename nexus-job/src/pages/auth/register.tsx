@@ -1,317 +1,396 @@
-import { useState } from 'react'
-import Link from 'next/link'
+'use client';
+
+import { useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
+import CVUploader from "@/components/forms/CVUploader";
 
 export default function RegisterPage() {
-  const [role, setRole] = useState<'jobseeker' | 'company'>('jobseeker')
+  const router = useRouter();
+
+  const [form, setForm] = useState({
+    full_name: "",
+    email: "",
+    password: "",
+    confirm_password: "",
+    phone: "",
+    age: "",
+    gender: "",
+    linkedin: "",
+    portfolio: "",
+    experience: "",
+    education: "",
+    cv_url: "", // Added CV URL field
+  });
+
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+    setTouched({ ...touched, [e.target.name]: true });
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setForm({ ...form, [name]: value });
+    setTouched({ ...touched, [name]: true });
+  };
+
+  const handleCVUploaded = (url: string) => {
+    setForm({ ...form, cv_url: url });
+  };
+
+  const handleBlur = (field: string) => {
+    setTouched({ ...touched, [field]: true });
+  };
+
+  const validateForm = () => {
+    const errors: string[] = [];
+
+    if (!form.full_name.trim()) errors.push("Full name is required");
+    if (!form.email.trim()) errors.push("Email is required");
+    if (!form.password) errors.push("Password is required");
+    if (form.password.length < 6) errors.push("Password must be at least 6 characters");
+    if (form.password !== form.confirm_password) errors.push("Passwords do not match");
+    if (!/\S+@\S+\.\S+/.test(form.email)) errors.push("Email is invalid");
+
+    return errors;
+  };
+
+const handleRegister = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError("");
+
+  const errors = validateForm();
+  if (errors.length > 0) {
+    return setError(errors[0]);
+  }
+
+  setLoading(true);
+
+  try {
+    // 1️⃣ Create auth user
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+    });
+
+    if (signUpError) throw signUpError;
+
+    const user = signUpData.user;
+    if (!user) throw new Error("User creation failed.");
+
+    // 2️⃣ Insert job seeker details
+    const { error: insertError } = await supabase.from("job_seekers").insert({
+      id: user.id,
+      full_name: form.full_name,
+      email: form.email,
+      phone: form.phone,
+      age: form.age ? Number(form.age) : null,
+      gender: form.gender,
+      linkedin: form.linkedin,
+      portfolio: form.portfolio,
+      experience: form.experience,
+      education: form.education,
+      cv_url: form.cv_url || null,
+    });
+
+    if (insertError) throw insertError;
+
+    // 3️⃣ Navigate to user dashboard
+    router.push("/dashboard/user");
+
+  } catch (err: any) {
+    setError(err.message || "Registration failed");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50 px-4 dark:from-gray-900 dark:to-gray-800">
-      <div className="w-full max-w-2xl space-y-8 rounded-2xl bg-white p-8 shadow-xl dark:bg-gray-800">
-        {/* Header Section */}
-        <div className="text-center">
-          <h1 className="mb-3 text-4xl font-bold text-gray-900 dark:text-white">
-            Join Our Professional Network
-          </h1>
-          <p className="mx-auto max-w-2xl text-lg text-gray-600 dark:text-gray-300">
-            Create your account to access exclusive opportunities and connect
-            with{' '}
-            {role === 'jobseeker' ? 'top employers' : 'talented professionals'}
-          </p>
-        </div>
-
-        {/* Role Selection */}
-        <div className="rounded-xl bg-gray-50 p-6 dark:bg-gray-700">
-          <h2 className="mb-4 text-center text-lg font-semibold text-gray-800 dark:text-white">
-            I am a...
-          </h2>
-          <div className="flex justify-center gap-4">
-            <button
-              onClick={() => setRole('jobseeker')}
-              className={`flex w-48 flex-col items-center justify-center rounded-xl border-2 p-6 transition-all duration-200 ${
-                role === 'jobseeker'
-                  ? 'border-indigo-500 bg-indigo-50 shadow-md dark:bg-indigo-900/20'
-                  : 'border-gray-200 hover:border-indigo-300 dark:border-gray-600 dark:hover:border-indigo-400'
-              }`}
-            >
-              <div
-                className={`mb-2 text-2xl ${role === 'jobseeker' ? 'text-indigo-600' : 'text-gray-400'}`}
-              >
-                👨‍💼
-              </div>
-              <span
-                className={`font-medium ${role === 'jobseeker' ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400'}`}
-              >
-                Job Seeker
-              </span>
-              <p className="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
-                Find your dream job
-              </p>
-            </button>
-
-            <button
-              onClick={() => setRole('company')}
-              className={`flex w-48 flex-col items-center justify-center rounded-xl border-2 p-6 transition-all duration-200 ${
-                role === 'company'
-                  ? 'border-indigo-500 bg-indigo-50 shadow-md dark:bg-indigo-900/20'
-                  : 'border-gray-200 hover:border-indigo-300 dark:border-gray-600 dark:hover:border-indigo-400'
-              }`}
-            >
-              <div
-                className={`mb-2 text-2xl ${role === 'company' ? 'text-indigo-600' : 'text-gray-400'}`}
-              >
-                🏢
-              </div>
-              <span
-                className={`font-medium ${role === 'company' ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400'}`}
-              >
-                Employer
-              </span>
-              <p className="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
-                Hire top talent
-              </p>
-            </button>
-          </div>
-        </div>
-
-        {/* Role-specific benefits */}
-        <div className="rounded-xl border border-blue-100 bg-blue-50 p-6 dark:border-blue-800 dark:bg-blue-900/20">
-          <h3 className="mb-2 flex items-center gap-2 font-semibold text-blue-800 dark:text-blue-300">
-            <span>✨</span>
-            {role === 'jobseeker'
-              ? 'Benefits for Job Seekers:'
-              : 'Benefits for Employers:'}
-          </h3>
-          <ul className="space-y-1 text-sm text-blue-700 dark:text-blue-400">
-            {role === 'jobseeker' ? (
-              <>
-                <li>• Access to exclusive job opportunities</li>
-                <li>• Personalized job recommendations</li>
-                <li>• Connect directly with employers</li>
-                <li>• Build your professional profile</li>
-              </>
-            ) : (
-              <>
-                <li>• Post unlimited job listings</li>
-                <li>• Access to qualified candidates</li>
-                <li>• Advanced candidate filtering</li>
-                <li>• Company profile visibility</li>
-              </>
-            )}
-          </ul>
-        </div>
-
-        {/* Main Form */}
-        <form className="space-y-6">
-          {/* Account Information Section */}
-          <div className="border-b border-gray-200 pb-6 dark:border-gray-600">
-            <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold text-gray-800 dark:text-white">
-              <span className="text-indigo-500">🔐</span>
-              Account Information
-            </h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Full Name *
-                </label>
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-800 transition-all outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-indigo-500/20"
-                  placeholder="Enter your full name"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Email Address *
-                </label>
-                <input
-                  type="email"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-800 transition-all outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-indigo-500/20"
-                  placeholder="your.email@example.com"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Password *
-                </label>
-                <input
-                  type="password"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-800 transition-all outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-indigo-500/20"
-                  placeholder="Create a strong password"
-                  required
-                />
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Minimum 8 characters with letters and numbers
-                </p>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Confirm Password *
-                </label>
-                <input
-                  type="password"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-800 transition-all outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-indigo-500/20"
-                  placeholder="Re-enter your password"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Role-specific Information */}
-          <div className="border-b border-gray-200 pb-6 dark:border-gray-600">
-            <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold text-gray-800 dark:text-white">
-              <span className="text-green-500">💼</span>
-              {role === 'jobseeker'
-                ? 'Professional Profile'
-                : 'Company Information'}
-              <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
-                (Optional - can be added later)
-              </span>
-            </h2>
-
-            {role === 'jobseeker' ? (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="md:col-span-2">
-                  <input
-                    type="text"
-                    placeholder="CV/Resume URL (LinkedIn, Google Drive, etc.)"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-800 transition-all outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-indigo-500/20"
-                  />
-                </div>
-
-                <div>
-                  <input
-                    type="text"
-                    placeholder="Skills (e.g. React, Node.js, Python)"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-800 transition-all outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-indigo-500/20"
-                  />
-                </div>
-
-                <div>
-                  <select className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-800 transition-all outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-indigo-500/20">
-                    <option value="">Experience Level</option>
-                    <option value="Intern">Intern</option>
-                    <option value="Entry-Level">Entry-Level (0-2 years)</option>
-                    <option value="Mid-Level">Mid-Level (3-5 years)</option>
-                    <option value="Senior">Senior (6+ years)</option>
-                    <option value="Lead">Lead/Manager</option>
-                  </select>
-                </div>
-
-                <div className="md:col-span-2">
-                  <textarea
-                    placeholder="Professional summary or bio (max 250 characters)"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-800 transition-all outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-indigo-500/20"
-                    rows={3}
-                    maxLength={250}
-                  ></textarea>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="md:col-span-2">
-                  <input
-                    type="text"
-                    placeholder="Company Legal Name *"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-800 transition-all outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-indigo-500/20"
-                  />
-                </div>
-
-                <div>
-                  <input
-                    type="text"
-                    placeholder="Company Logo URL"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-800 transition-all outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-indigo-500/20"
-                  />
-                </div>
-
-                <div>
-                  <input
-                    type="text"
-                    placeholder="Industry"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-800 transition-all outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-indigo-500/20"
-                  />
-                </div>
-
-                <div>
-                  <input
-                    type="text"
-                    placeholder="Headquarters Location"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-800 transition-all outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-indigo-500/20"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <textarea
-                    placeholder="Company description and mission"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-800 transition-all outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-indigo-500/20"
-                    rows={3}
-                  ></textarea>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Terms and Submit */}
-          <div className="space-y-4">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="terms"
-                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                required
-              />
-              <label
-                htmlFor="terms"
-                className="ml-2 text-sm text-gray-600 dark:text-gray-400"
-              >
-                I agree to the{' '}
-                <Link
-                  href="/terms"
-                  className="text-indigo-600 hover:underline dark:text-indigo-400"
-                >
-                  Terms of Service
-                </Link>{' '}
-                and{' '}
-                <Link
-                  href="/privacy"
-                  className="text-indigo-600 hover:underline dark:text-indigo-400"
-                >
-                  Privacy Policy
-                </Link>
-              </label>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 py-4 font-semibold text-white shadow-lg transition-all hover:from-indigo-700 hover:to-purple-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-            >
-              Create {role === 'jobseeker' ? 'Professional' : 'Company'} Account
-            </button>
-          </div>
-        </form>
-
-        {/* Footer */}
-        <div className="text-center">
-          <p className="text-gray-600 dark:text-gray-400">
-            Already have an account?{' '}
-            <Link href="/auth/login">
-              <span className="cursor-pointer font-semibold text-indigo-600 hover:underline dark:text-indigo-400">
-                Sign in here
-              </span>
-            </Link>
-          </p>
-          <p className="mt-2 text-xs text-gray-500 dark:text-gray-500">
-            By creating an account, you agree to our platform guidelines and
-            community standards.
-          </p>
-        </div>
+    <div className="container max-w-2xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      {/* Header */}
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">
+          Join Our Talent Network
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          Create your profile and start your journey to finding the perfect job
+        </p>
       </div>
+
+      {/* Card Container */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Create Your Account</CardTitle>
+          <CardDescription>
+            Fill in your details to create your professional profile
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <form onSubmit={handleRegister} className="space-y-6">
+            {/* Personal Information Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Personal Information</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="full_name">
+                    Full Name *
+                  </Label>
+                  <Input
+                    id="full_name"
+                    name="full_name"
+                    type="text"
+                    value={form.full_name}
+                    onChange={handleChange}
+                    onBlur={() => handleBlur('full_name')}
+                    required
+                    placeholder="Enter your full name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">
+                    Email Address *
+                  </Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    onBlur={() => handleBlur('email')}
+                    required
+                    placeholder="your.email@example.com"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">
+                    Phone Number
+                  </Label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    value={form.phone}
+                    onChange={handleChange}
+                    placeholder="+1 (555) 000-0000"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="age">
+                    Age
+                  </Label>
+                  <Input
+                    id="age"
+                    name="age"
+                    type="number"
+                    value={form.age}
+                    onChange={handleChange}
+                    placeholder="25"
+                    min="18"
+                    max="100"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="gender">
+                    Gender
+                  </Label>
+                  <Select 
+                    value={form.gender} 
+                    onValueChange={(value) => handleSelectChange('gender', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Professional Links Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Professional Profile</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="linkedin">
+                    LinkedIn Profile
+                  </Label>
+                  <Input
+                    id="linkedin"
+                    name="linkedin"
+                    type="url"
+                    value={form.linkedin}
+                    onChange={handleChange}
+                    placeholder="https://linkedin.com/in/yourprofile"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="portfolio">
+                    Portfolio / GitHub
+                  </Label>
+                  <Input
+                    id="portfolio"
+                    name="portfolio"
+                    type="url"
+                    value={form.portfolio}
+                    onChange={handleChange}
+                    placeholder="https://github.com/yourusername"
+                  />
+                </div>
+              </div>
+
+              {/* CV Upload Section */}
+              <div className="space-y-2">
+                <Label>CV / Resume</Label>
+                <CVUploader 
+                   folder="temp_cv_uploads" onUploaded={handleCVUploaded} 
+                />
+                {form.cv_url && (
+                  <p className="text-sm text-green-600">CV uploaded successfully!</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="experience">
+                  Professional Experience
+                </Label>
+                <Textarea
+                  id="experience"
+                  name="experience"
+                  rows={4}
+                  value={form.experience}
+                  onChange={handleChange}
+                  placeholder="Describe your work experience, skills, and achievements..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="education">
+                  Education
+                </Label>
+                <Textarea
+                  id="education"
+                  name="education"
+                  rows={3}
+                  value={form.education}
+                  onChange={handleChange}
+                  placeholder="List your educational background, degrees, and certifications..."
+                />
+              </div>
+            </div>
+
+            {/* Security Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Account Security</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="password">
+                    Password *
+                  </Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    value={form.password}
+                    onChange={handleChange}
+                    onBlur={() => handleBlur('password')}
+                    required
+                    placeholder="At least 6 characters"
+                  />
+                  {touched.password && form.password.length < 6 && (
+                    <p className="text-sm text-destructive mt-1">
+                      Password must be at least 6 characters
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirm_password">
+                    Confirm Password *
+                  </Label>
+                  <Input
+                    id="confirm_password"
+                    name="confirm_password"
+                    type="password"
+                    value={form.confirm_password}
+                    onChange={handleChange}
+                    onBlur={() => handleBlur('confirm_password')}
+                    required
+                    placeholder="Confirm your password"
+                  />
+                  {touched.confirm_password && form.password !== form.confirm_password && (
+                    <p className="text-sm text-destructive mt-1">
+                      Passwords do not match
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full"
+              size="lg"
+            >
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  Creating Your Account...
+                </>
+              ) : (
+                "Create My Account"
+              )}
+            </Button>
+
+            {/* Additional Info */}
+            <p className="text-center text-sm text-muted-foreground">
+              By creating an account, you agree to our{" "}
+              <a href="#" className="text-primary hover:underline font-medium">
+                Terms of Service
+              </a>{" "}
+              and{" "}
+              <a href="#" className="text-primary hover:underline font-medium">
+                Privacy Policy
+              </a>
+            </p>
+          </form>
+        </CardContent>
+      </Card>
     </div>
-  )
+  );
 }
