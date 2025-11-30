@@ -3,6 +3,7 @@ import { JobDetail } from '@/components/common/JobDetail'
 import { EmptyState } from '@/components/common/EmptyState'
 import { Job } from '@/types/job'
 
+
 import { GetServerSideProps } from 'next'
 import { useRouter } from 'next/router'
 
